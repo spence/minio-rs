@@ -1,10 +1,9 @@
 use log::info;
-use minio::s3::args::{BucketExistsArgs, MakeBucketArgs};
-use minio::s3::builders::ObjectContent;
+use minio::s3::args::{BucketExistsArgs, MakeBucketArgs, UploadObjectArgs};
 use minio::s3::client::ClientBuilder;
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
-use std::path::Path;
+use minio::s3::sse::SseCustomerKey;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -41,22 +40,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     // File we are going to upload to the bucket
-    let filename: &Path = Path::new("/tmp/asiaphotos.zip");
+    let filename: &str = "/tmp/asiaphotos.zip";
 
     // Name of the object that will be stored in the bucket
     let object_name: &str = "asiaphotos-2015.zip";
 
-    info!("filename {}", &filename.to_str().unwrap());
+    info!("filename {}", filename);
 
-    let content = ObjectContent::from(filename);
     client
-        .put_object_content(bucket_name, object_name, content)
-        .send()
-        .await?;
+        .upload_object(
+            &mut UploadObjectArgs::<SseCustomerKey>::new(
+                bucket_name,
+                object_name,
+                filename,
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
 
     info!(
         "file `{}` is successfully uploaded as object `{object_name}` to bucket `{bucket_name}`.",
-        filename.display()
+        filename
     );
     Ok(())
 }

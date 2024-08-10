@@ -38,15 +38,18 @@ pub const MAX_OBJECT_SIZE: usize = 5_497_558_138_880; // 5 TiB
 pub const MAX_MULTIPART_COUNT: u16 = 10_000;
 pub const DEFAULT_EXPIRY_SECONDS: u32 = 604_800; // 7 days
 
-fn object_write_args_headers(
+fn object_write_args_headers<S>(
     extra_headers: Option<&Multimap>,
     headers: Option<&Multimap>,
     user_metadata: Option<&Multimap>,
-    sse: Option<&(dyn Sse + Send + Sync)>,
+    sse: Option<&S>,
     tags: Option<&HashMap<String, String>>,
     retention: Option<&Retention>,
     legal_hold: bool,
-) -> Multimap {
+) -> Multimap
+where
+    S: Sse + Send + Sync,
+{
     let mut map = Multimap::new();
 
     if let Some(v) = extra_headers {
@@ -466,7 +469,10 @@ impl<'a> CreateMultipartUploadArgs<'a> {
 
 #[derive(Clone, Debug, Default)]
 /// Argument for [put_object_api()](crate::s3::client::Client::put_object_api) S3 API
-pub struct PutObjectApiArgs<'a> {
+pub struct PutObjectApiArgs<'a, S>
+where
+    S: Sse + Send + Sync,
+{
     pub extra_headers: Option<&'a Multimap>,
     pub extra_query_params: Option<&'a Multimap>,
     pub region: Option<&'a str>,
@@ -474,7 +480,7 @@ pub struct PutObjectApiArgs<'a> {
     pub object: &'a str,
     pub headers: Option<&'a Multimap>,
     pub user_metadata: Option<&'a Multimap>,
-    pub sse: Option<&'a (dyn Sse + Send + Sync)>,
+    pub sse: Option<&'a S>,
     pub tags: Option<&'a HashMap<String, String>>,
     pub retention: Option<&'a Retention>,
     pub legal_hold: bool,
@@ -482,21 +488,21 @@ pub struct PutObjectApiArgs<'a> {
     pub query_params: Option<&'a Multimap>,
 }
 
-impl<'a> PutObjectApiArgs<'a> {
+impl<'a, S: Sse + Send + Sync> PutObjectApiArgs<'a, S> {
     /// Returns argument for [put_object_api()](crate::s3::client::Client::put_object_api) S3 API with given bucket name, object name and data
     ///
     /// # Examples
     ///
     /// ```
-    /// use minio::s3::args::*;
+    /// use minio::s3::{args::*, sse::*};
     /// let data: &[u8] = &[65, 67, 69];
-    /// let args = PutObjectApiArgs::new("my-bucket", "my-object", data).unwrap();
+    /// let args = PutObjectApiArgs::<SseCustomerKey>::new("my-bucket", "my-object", data).unwrap();
     /// ```
     pub fn new(
         bucket_name: &'a str,
         object_name: &'a str,
         data: &'a [u8],
-    ) -> Result<PutObjectApiArgs<'a>, Error> {
+    ) -> Result<PutObjectApiArgs<'a, S>, Error> {
         check_bucket_name(bucket_name, true)?;
 
         if object_name.is_empty() {
@@ -537,7 +543,10 @@ impl<'a> PutObjectApiArgs<'a> {
 
 #[derive(Clone, Debug, Default)]
 /// Argument for [upload_part()](crate::s3::client::Client::upload_part) S3 API
-pub struct UploadPartArgs<'a> {
+pub struct UploadPartArgs<'a, S>
+where
+    S: Sse + Send + Sync,
+{
     pub extra_headers: Option<&'a Multimap>,
     pub extra_query_params: Option<&'a Multimap>,
     pub region: Option<&'a str>,
@@ -545,7 +554,7 @@ pub struct UploadPartArgs<'a> {
     pub object: &'a str,
     pub headers: Option<&'a Multimap>,
     pub user_metadata: Option<&'a Multimap>,
-    pub sse: Option<&'a (dyn Sse + Send + Sync)>,
+    pub sse: Option<&'a S>,
     pub tags: Option<&'a HashMap<String, String>>,
     pub retention: Option<&'a Retention>,
     pub legal_hold: bool,
@@ -554,15 +563,15 @@ pub struct UploadPartArgs<'a> {
     pub data: &'a [u8],
 }
 
-impl<'a> UploadPartArgs<'a> {
+impl<'a, S: Sse + Send + Sync> UploadPartArgs<'a, S> {
     /// Returns argument for [upload_part()](crate::s3::client::Client::upload_part) API with given bucket name, object name, part number and data
     ///
     /// # Examples
     ///
     /// ```
-    /// use minio::s3::args::*;
+    /// use minio::s3::{args::*, sse::*};
     /// let data: &[u8] = &[65, 67, 69];
-    /// let args = UploadPartArgs::new(
+    /// let args = UploadPartArgs::<SseCustomerKey>::new(
     ///     "my-bucket",
     ///     "my-object",
     ///     "c53a2b73-f5e6-484a-9bc0-09cce13e8fd0",
@@ -576,7 +585,7 @@ impl<'a> UploadPartArgs<'a> {
         upload_id: &'a str,
         part_number: u16,
         data: &'a [u8],
-    ) -> Result<UploadPartArgs<'a>, Error> {
+    ) -> Result<UploadPartArgs<'a, S>, Error> {
         check_bucket_name(bucket_name, true)?;
 
         if object_name.is_empty() {
@@ -629,7 +638,11 @@ impl<'a> UploadPartArgs<'a> {
 }
 
 /// Argument for [put_object()](crate::s3::client::Client::put_object) API
-pub struct PutObjectArgs<'a> {
+pub struct PutObjectArgs<'a, R, S>
+where
+    R: std::io::Read,
+    S: Sse + Send + Sync,
+{
     pub extra_headers: Option<&'a Multimap>,
     pub extra_query_params: Option<&'a Multimap>,
     pub region: Option<&'a str>,
@@ -637,7 +650,7 @@ pub struct PutObjectArgs<'a> {
     pub object: &'a str,
     pub headers: Option<&'a Multimap>,
     pub user_metadata: Option<&'a Multimap>,
-    pub sse: Option<&'a (dyn Sse + Send + Sync)>,
+    pub sse: Option<&'a S>,
     pub tags: Option<&'a HashMap<String, String>>,
     pub retention: Option<&'a Retention>,
     pub legal_hold: bool,
@@ -645,10 +658,10 @@ pub struct PutObjectArgs<'a> {
     pub part_size: usize,
     pub part_count: i16,
     pub content_type: &'a str,
-    pub stream: &'a mut dyn std::io::Read,
+    pub stream: &'a mut R,
 }
 
-impl<'a> PutObjectArgs<'a> {
+impl<'a, R: std::io::Read, S: Sse + Send + Sync> PutObjectArgs<'a, R, S> {
     /// Returns argument for [put_object()](crate::s3::client::Client::put_object) API with given bucket name, object name, stream, optional object size and optional part size
     ///
     /// * If stream size is known and wanted to create object with entire stream data, pass stream size as object size.
@@ -657,21 +670,21 @@ impl<'a> PutObjectArgs<'a> {
     /// # Examples
     ///
     /// ```no_run
-    /// use minio::s3::args::*;
-    /// use std::fs::File;
-    /// let filename = "asiaphotos-2015.zip";
-    /// let meta = std::fs::metadata(filename).unwrap();
-    /// let object_size = Some(meta.len() as usize);
-    /// let mut file = File::open(filename).unwrap();
-    /// let args = PutObjectArgs::new("my-bucket", "my-object", &mut file, object_size, None).unwrap();
+    ///   use minio::s3::{args::*, sse::*};
+    ///   use std::fs::File;
+    ///   let filename = "asiaphotos-2015.zip";
+    ///   let meta = std::fs::metadata(filename).unwrap();
+    ///   let object_size = Some(meta.len() as usize);
+    ///   let mut file = File::open(filename).unwrap();
+    ///   let args = PutObjectArgs::<_, SseCustomerKey>::new("my-bucket", "my-object", &mut file, object_size, None).unwrap();
     /// ```
     pub fn new(
         bucket_name: &'a str,
         object_name: &'a str,
-        stream: &'a mut dyn std::io::Read,
+        stream: &'a mut R,
         object_size: Option<usize>,
         part_size: Option<usize>,
-    ) -> Result<PutObjectArgs<'a>, Error> {
+    ) -> Result<PutObjectArgs<'a, R, S>, Error> {
         check_bucket_name(bucket_name, true)?;
 
         if object_name.is_empty() {
@@ -1020,7 +1033,10 @@ impl<'a> UploadPartCopyArgs<'a> {
 
 #[derive(Clone, Debug, Default)]
 /// Argument for [copy_object()](crate::s3::client::Client::copy_object) API
-pub struct CopyObjectArgs<'a> {
+pub struct CopyObjectArgs<'a, S>
+where
+    S: Sse + Send + Sync,
+{
     pub extra_headers: Option<&'a Multimap>,
     pub extra_query_params: Option<&'a Multimap>,
     pub region: Option<&'a str>,
@@ -1028,7 +1044,7 @@ pub struct CopyObjectArgs<'a> {
     pub object: &'a str,
     pub headers: Option<&'a Multimap>,
     pub user_metadata: Option<&'a Multimap>,
-    pub sse: Option<&'a (dyn Sse + Send + Sync)>,
+    pub sse: Option<&'a S>,
     pub tags: Option<&'a HashMap<String, String>>,
     pub retention: Option<&'a Retention>,
     pub legal_hold: bool,
@@ -1037,21 +1053,21 @@ pub struct CopyObjectArgs<'a> {
     pub tagging_directive: Option<Directive>,
 }
 
-impl<'a> CopyObjectArgs<'a> {
+impl<'a, S: Sse + Send + Sync> CopyObjectArgs<'a, S> {
     /// Returns argument for [copy_object()](crate::s3::client::Client::copy_object) API with given bucket name, object name and copy source.
     ///
     /// # Examples
     ///
     /// ```
-    /// use minio::s3::args::*;
+    /// use minio::s3::{args::*, sse::*};
     /// let src = CopySource::new("my-src-bucket", "my-src-object").unwrap();
-    /// let args = CopyObjectArgs::new("my-bucket", "my-object", src).unwrap();
+    /// let args = CopyObjectArgs::<SseCustomerKey>::new("my-bucket", "my-object", src).unwrap();
     /// ```
     pub fn new(
         bucket_name: &'a str,
         object_name: &'a str,
         source: CopySource<'a>,
-    ) -> Result<CopyObjectArgs<'a>, Error> {
+    ) -> Result<CopyObjectArgs<'a, S>, Error> {
         check_bucket_name(bucket_name, true)?;
 
         if object_name.is_empty() {
@@ -1246,7 +1262,10 @@ impl<'a> ComposeSource<'a> {
 }
 
 /// Argument for [compose_object()](crate::s3::client::Client::compose_object) API
-pub struct ComposeObjectArgs<'a> {
+pub struct ComposeObjectArgs<'a, S>
+where
+    S: Sse + Send + Sync,
+{
     pub extra_headers: Option<&'a Multimap>,
     pub extra_query_params: Option<&'a Multimap>,
     pub region: Option<&'a str>,
@@ -1254,30 +1273,30 @@ pub struct ComposeObjectArgs<'a> {
     pub object: &'a str,
     pub headers: Option<&'a Multimap>,
     pub user_metadata: Option<&'a Multimap>,
-    pub sse: Option<&'a (dyn Sse + Send + Sync)>,
+    pub sse: Option<&'a S>,
     pub tags: Option<&'a HashMap<String, String>>,
     pub retention: Option<&'a Retention>,
     pub legal_hold: bool,
     pub sources: &'a mut Vec<ComposeSource<'a>>,
 }
 
-impl<'a> ComposeObjectArgs<'a> {
+impl<'a, S: Sse + Send + Sync> ComposeObjectArgs<'a, S> {
     /// Returns argument for [compose_object()](crate::s3::client::Client::compose_object) API with given bucket name, object name and list of compose sources.
     ///
     /// # Examples
     ///
     /// ```
-    /// use minio::s3::args::*;
+    /// use minio::s3::{args::*, sse::*};
     /// let mut sources: Vec<ComposeSource> = Vec::new();
     /// sources.push(ComposeSource::new("my-src-bucket", "my-src-object-1").unwrap());
     /// sources.push(ComposeSource::new("my-src-bucket", "my-src-object-2").unwrap());
-    /// let args = ComposeObjectArgs::new("my-bucket", "my-object", &mut sources).unwrap();
+    /// let args = ComposeObjectArgs::<SseCustomerKey>::new("my-bucket", "my-object", &mut sources).unwrap();
     /// ```
     pub fn new(
         bucket_name: &'a str,
         object_name: &'a str,
         sources: &'a mut Vec<ComposeSource<'a>>,
-    ) -> Result<ComposeObjectArgs<'a>, Error> {
+    ) -> Result<ComposeObjectArgs<'a, S>, Error> {
         check_bucket_name(bucket_name, true)?;
 
         if object_name.is_empty() {
@@ -2252,7 +2271,10 @@ impl<'a> DownloadObjectArgs<'a> {
 }
 
 /// Argument for [upload_object()](crate::s3::client::Client::upload_object) API
-pub struct UploadObjectArgs<'a> {
+pub struct UploadObjectArgs<'a, S>
+where
+    S: Sse + Send + Sync,
+{
     pub extra_headers: Option<&'a Multimap>,
     pub extra_query_params: Option<&'a Multimap>,
     pub region: Option<&'a str>,
@@ -2260,7 +2282,7 @@ pub struct UploadObjectArgs<'a> {
     pub object: &'a str,
     pub headers: Option<&'a Multimap>,
     pub user_metadata: Option<&'a Multimap>,
-    pub sse: Option<&'a (dyn Sse + Send + Sync)>,
+    pub sse: Option<&'a S>,
     pub tags: Option<&'a HashMap<String, String>>,
     pub retention: Option<&'a Retention>,
     pub legal_hold: bool,
@@ -2271,20 +2293,20 @@ pub struct UploadObjectArgs<'a> {
     pub filename: &'a str,
 }
 
-impl<'a> UploadObjectArgs<'a> {
+impl<'a, S: Sse + Send + Sync> UploadObjectArgs<'a, S> {
     /// Returns argument for [upload_object()](crate::s3::client::Client::upload_object) API with given bucket name, object name and filename
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use minio::s3::args::*;
-    /// let args = UploadObjectArgs::new("my-bucket", "my-object", "asiaphotos-2015.zip").unwrap();
+    /// use minio::s3::{args::*, sse::*};
+    /// let args = UploadObjectArgs::<SseCustomerKey>::new("my-bucket", "my-object", "asiaphotos-2015.zip").unwrap();
     /// ```
     pub fn new(
         bucket_name: &'a str,
         object_name: &'a str,
         filename: &'a str,
-    ) -> Result<UploadObjectArgs<'a>, Error> {
+    ) -> Result<UploadObjectArgs<'a, S>, Error> {
         check_bucket_name(bucket_name, true)?;
 
         if object_name.is_empty() {

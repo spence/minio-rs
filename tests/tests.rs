@@ -18,7 +18,7 @@ use bytes::Bytes;
 use chrono::Duration;
 use futures_util::Stream;
 use hyper::http::Method;
-
+use minio::s3::sse::SseCustomerKey;
 use minio::s3::builders::{ObjectContent, ObjectToDelete};
 use rand::{
     distributions::{Alphanumeric, DistString},
@@ -258,7 +258,7 @@ impl ClientTest {
         let size = 16_usize;
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     &mut RandReader::new(size),
@@ -300,7 +300,7 @@ impl ClientTest {
         let size: usize = 16 + 5 * 1024 * 1024;
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     &mut RandReader::new(size),
@@ -451,7 +451,7 @@ impl ClientTest {
         let data = "hello, world";
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     &mut BufReader::new(data.as_bytes()),
@@ -514,7 +514,12 @@ impl ClientTest {
         file.sync_all().unwrap();
         self.client
             .upload_object(
-                &UploadObjectArgs::new(&self.test_bucket, &object_name, &object_name).unwrap(),
+                &UploadObjectArgs::<SseCustomerKey>::new(
+                    &self.test_bucket,
+                    &object_name,
+                    &object_name,
+                )
+                .unwrap(),
             )
             .await
             .unwrap();
@@ -549,7 +554,12 @@ impl ClientTest {
         file.sync_all().unwrap();
         self.client
             .upload_object(
-                &UploadObjectArgs::new(&self.test_bucket, &object_name, &object_name).unwrap(),
+                &UploadObjectArgs::<SseCustomerKey>::new(
+                    &self.test_bucket,
+                    &object_name,
+                    &object_name,
+                )
+                .unwrap(),
             )
             .await
             .unwrap();
@@ -591,7 +601,7 @@ impl ClientTest {
             let size = 0_usize;
             self.client
                 .put_object_old(
-                    &mut PutObjectArgs::new(
+                    &mut PutObjectArgs::<_, SseCustomerKey>::new(
                         &self.test_bucket,
                         &object_name,
                         &mut RandReader::new(size),
@@ -645,7 +655,7 @@ impl ClientTest {
             let size = 0_usize;
             self.client
                 .put_object_old(
-                    &mut PutObjectArgs::new(
+                    &mut PutObjectArgs::<_, SseCustomerKey>::new(
                         &self.test_bucket,
                         &object_name,
                         &mut RandReader::new(size),
@@ -710,7 +720,7 @@ impl ClientTest {
 
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     &mut BufReader::new(body.as_bytes()),
@@ -824,7 +834,7 @@ impl ClientTest {
         let size = 16_usize;
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     &mut RandReader::new(size),
@@ -852,7 +862,7 @@ impl ClientTest {
         let size = 16_usize;
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &src_object_name,
                     &mut RandReader::new(size),
@@ -867,7 +877,7 @@ impl ClientTest {
         let object_name = rand_object_name();
         self.client
             .copy_object(
-                &CopyObjectArgs::new(
+                &CopyObjectArgs::<SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     CopySource::new(&self.test_bucket, &src_object_name).unwrap(),
@@ -902,7 +912,7 @@ impl ClientTest {
         let size = 16_usize;
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &src_object_name,
                     &mut RandReader::new(size),
@@ -924,7 +934,12 @@ impl ClientTest {
 
         self.client
             .compose_object(
-                &mut ComposeObjectArgs::new(&self.test_bucket, &object_name, &mut sources).unwrap(),
+                &mut ComposeObjectArgs::<SseCustomerKey>::new(
+                    &self.test_bucket,
+                    &object_name,
+                    &mut sources,
+                )
+                .unwrap(),
             )
             .await
             .unwrap();
@@ -1192,7 +1207,7 @@ impl ClientTest {
         let size = 16_usize;
         self.client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &self.test_bucket,
                     &object_name,
                     &mut RandReader::new(size),
@@ -1305,7 +1320,7 @@ impl ClientTest {
         let obj_resp = self
             .client
             .put_object_old(
-                &mut PutObjectArgs::new(
+                &mut PutObjectArgs::<_, SseCustomerKey>::new(
                     &bucket_name,
                     &object_name,
                     &mut RandReader::new(size),
